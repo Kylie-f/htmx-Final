@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HTMX Calendar App</title>
+
+  <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    #calendar {
+      max-width: 900px;
+      margin: 20px auto;
+    }
+    .button {
+      margin: 10px auto;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      display: block;
+    }
+    .button:hover {
+      background-color: #0056b3;
+    }
+    form {
+      max-width: 500px;
+      margin: 20px auto;
+      display: none; 
+      flex-direction: column;
+    }
+    form input, form button {
+      margin-bottom: 10px;
+      padding: 10px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Google Calendar</h1>
+
+  <!-- Add Event Button -->
+  <button id="showAddForm" class="button">➕ Add Event</button>
+
+  <!-- Add Event Form -->
+  <form id="addEventForm">
+    <input type="text" id="newEventTitle" placeholder="Event title" required>
+    <input type="datetime-local" id="newEventDate" required>
+    <button type="submit" class="button">Submit Event</button>
+  </form>
+
+  <div id="calendar"></div>
+
+  <script>
+    let calendar;
+
+    window.addEventListener('DOMContentLoaded', function() {
+      fetch('/api/events')
+        .then(response => response.json())
+        .then(data => {
+          const calendarEl = document.getElementById('calendar');
+          calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+              left: 'prev,next today',
+              center: 'title',
+              right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            events: data.map(event => {
+              let backgroundColor = '';
+              let textColor = 'black';
+
+              if (event.summary.toLowerCase().includes('birthday')) {
+                backgroundColor = '#f9c74f';
+              } else if (event.summary.toLowerCase().includes('flight')) {
+                backgroundColor = '#90be6d';
+              } else if (event.summary.toLowerCase().includes('meeting')) {
+                backgroundColor = '#577590';
+              } else {
+                backgroundColor = '#f94144';
+                textColor = 'white';
+              }
+
+              return {
+                title: event.summary,
+                start: event.start,
+                backgroundColor: backgroundColor,
+                textColor: textColor
+              };
+            })
+          });
+          calendar.render();
+        })
+        .catch(error => {
+          console.error('Error loading calendar events:', error);
+        });
+
+      document.getElementById('showAddForm').addEventListener('click', function() {
+        const form = document.getElementById('addEventForm');
+        form.style.display = 'flex';
+        this.style.display = 'none';
+      });
+
+      document.getElementById('addEventForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const title = document.getElementById('newEventTitle').value;
+        const date = document.getElementById('newEventDate').value;
+
+        // Add to calendar 
+        calendar.addEvent({
+          title: title,
+          start: date,
+          backgroundColor: '#43aa8b',
+          textColor: 'white'
+        });
+
+        // save in Firebase
+        fetch('/api/addevent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, start: date })
+        })
+        .then(response => response.text())
+        .then(data => console.log(data))
+        .catch(error => console.error('Error saving event to database:', error));
+
+        this.reset();
+        this.style.display = 'none';
+        document.getElementById('showAddForm').style.display = 'block';
+      });
+    });
+  </script>
+</body>
+</html>
