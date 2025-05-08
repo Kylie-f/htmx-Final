@@ -1,9 +1,13 @@
 const admin = require('firebase-admin');
-const serviceAccount = require('./serviceAccountKey.json');
+
+// Use env variable on Render; fallback to local file during development
+const serviceAccount = process.env.FIREBASE_CREDENTIALS
+  ? JSON.parse(process.env.FIREBASE_CREDENTIALS)
+  : require('./serviceAccount.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://fnof-1-default-rtdb.firebaseio.com/'
+  databaseURL: 'https://fnof-1-default-rtdb.firebaseio.com/',
 });
 
 const db = admin.database();
